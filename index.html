@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>퍼셉트론 실습 - 화남 예측기</title>
+  <style>
+    * { box-sizing: border-box; font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif; }
+    body { margin: 0; background: #f6f8fc; color: #1f2a44; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .panel {
+      background: #fff; border-radius: 22px; padding: 24px; margin-bottom: 20px;
+      box-shadow: 0 10px 28px rgba(30, 42, 68, 0.08);
+    }
+    h1, h2, h3, p { margin-top: 0; }
+    .subtitle { color: #56627a; line-height: 1.7; }
+    .step-indicator { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .step-badge {
+      padding: 8px 12px; border-radius: 999px; background: #e9eefb; font-size: 14px;
+    }
+    .step-badge.active { background: #4c7dff; color: white; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+    .node-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .node-card {
+      border: 2px solid #dfe6fb; border-radius: 18px; padding: 16px; background: #fbfcff;
+    }
+    .node-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .node-title { font-size: 18px; font-weight: 700; }
+    .node-icon {
+      width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: #eef3ff; font-size: 22px;
+    }
+    .node-desc { font-size: 14px; color: #5a6782; margin: 10px 0 12px; min-height: 38px; }
+    .toggle-row { display: flex; gap: 10px; }
+    .toggle-btn {
+      flex: 1; border: none; border-radius: 12px; padding: 10px 12px; cursor: pointer;
+      font-weight: 700; background: #e9eefb; color: #30405d;
+    }
+    .toggle-btn.selected-on { background: #4c7dff; color: white; }
+    .toggle-btn.selected-off { background: #cfd8ef; color: #23324f; }
+    .side-card {
+      border: 2px dashed #d5def5; border-radius: 20px; padding: 18px; background: #fafbff;
+    }
+    .result-box {
+      margin-top: 16px; padding: 18px; border-radius: 18px; background: #f0f5ff; line-height: 1.8;
+    }
+    .alarm { background: #ffe6e6; color: #9e2430; }
+    .calm { background: #e6f7e8; color: #21673a; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    button {
+      border: none; border-radius: 14px; padding: 12px 16px; cursor: pointer; font-size: 15px;
+      font-weight: 700; background: #4c7dff; color: white;
+    }
+    button.secondary { background: #e9eefb; color: #253556; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .hidden { display: none; }
+    .trial-list { margin-top: 14px; display: grid; gap: 10px; }
+    .trial-item {
+      border: 1px solid #dce4f7; border-radius: 14px; padding: 12px; background: white; font-size: 14px; line-height: 1.6;
+    }
+    .mini-tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .mini-tag { background: #eef3ff; border-radius: 999px; padding: 5px 10px; font-size: 13px; }
+    .weights-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px; }
+    .weight-card { border: 1px solid #dce4f7; border-radius: 16px; padding: 14px; background: #fbfcff; }
+    .formula { font-size: 16px; font-weight: 700; line-height: 1.8; }
+    .prediction-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+    .case-card { border: 1px solid #dce4f7; border-radius: 16px; padding: 14px; background: #fbfcff; }
+    .case-title { font-weight: 700; margin-bottom: 8px; }
+    .footer-note { color: #5c6880; font-size: 14px; }
+    @media (max-width: 850px) {
+      .grid { grid-template-columns: 1fr; }
+      .container { padding: 14px; }
+      .panel { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="panel">
+      <h1>퍼셉트론 실습: 화남 예측기</h1>
+      <p class="subtitle">
+        여러 행동 신호를 입력으로 넣고, 결과를 관찰하며 규칙을 추리해 보세요.
+        어떤 행동은 화남 점수를 올리고, 어떤 행동은 점수를 낮출 수 있습니다.
+        처음에는 각 행동의 점수(가중치)가 숨겨져 있습니다. 여러 번 실험한 뒤 가중치를 공개하면,
+        퍼셉트론이 어떻게 판단하는지 확인할 수 있습니다.
+      </p>
+      <div class="step-indicator">
+        <span class="step-badge active" id="badge-1">1단계 입력 선택</span>
+        <span class="step-badge" id="badge-2">2단계 결과 관찰</span>
+        <span class="step-badge" id="badge-3">3단계 가중치 공개</span>
+        <span class="step-badge" id="badge-4">4단계 새 사례 예측</span>
+      </div>
+    </section>
+
+    <section class="panel" id="step-1">
+      <h2>1단계. 입력 노드 선택하기</h2>
+      <p class="subtitle">
+        아래 행동이 있었는지 골라 보세요. 각 행동은 퍼셉트론의 입력 노드입니다.
+      </p>
+      <div class="grid">
+        <div>
+          <div class="node-list" id="input-list"></div>
+        </div>
+        <div class="side-card">
+          <h3>현재 선택</h3>
+          <div id="current-selection" class="footer-note">아직 선택한 행동이 없습니다.</div>
+          <div class="actions">
+            <button id="run-btn">결과 보기</button>
+            <button class="secondary" id="clear-btn">선택 지우기</button>
+          </div>
+          <div class="result-box hidden" id="instant-result"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="step-2">
+      <h2>2단계. 결과를 관찰하며 규칙 추리하기</h2>
+      <p class="subtitle">
+        실험 결과를 모아 보세요. 어떤 행동은 결과를 강하게 만들고, 어떤 행동은 화남 점수를 낮출 수도 있습니다.
+        아직 점수는 공개되지 않습니다.
+      </p>
+      <div class="result-box" id="hint-box">
+        아직 충분한 실험이 없습니다. 서로 다른 조합으로 여러 번 실험해 보세요.
+      </div>
+      <div class="trial-list" id="trial-list"></div>
+      <div class="actions">
+        <button class="secondary" id="back-to-step1">입력 다시 선택하기</button>
+        <button id="reveal-btn" disabled>가중치 공개하기</button>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="step-3">
+      <h2>3단계. 숨겨진 가중치와 역치 공개</h2>
+      <p class="subtitle">
+        이제 각 입력의 점수와 기준값을 확인해 보세요. 퍼셉트론은 입력값 × 가중치를 더한 뒤,
+        그 합이 역치를 넘는지 비교해 결과를 냅니다.
+      </p>
+      <div class="weights-grid" id="weights-grid"></div>
+      <div class="result-box" id="formula-box"></div>
+      <div class="actions">
+        <button class="secondary" id="back-to-step2">이전 단계</button>
+        <button id="go-predict-btn">새 사례 예측하기</button>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="step-4">
+      <h2>4단계. 새로운 사례 예측하기</h2>
+      <p class="subtitle">
+        이제 가중치와 역치를 바탕으로 새로운 입력 조합의 결과를 예측해 보세요.
+      </p>
+      <div class="prediction-panel" id="prediction-list"></div>
+      <div class="actions">
+        <button class="secondary" id="back-to-step3">이전 단계</button>
+        <button id="reset-btn">처음부터 다시하기</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const nodes = [
+      { id: 'homework', name: '숙제 안 하기', icon: '📚', desc: '해야 할 숙제를 하지 않았어요.', weight: 2 },
+      { id: 'sleep', name: '늦잠 자기', icon: '⏰', desc: '아침에 늦게 일어났어요.', weight: 1 },
+      { id: 'mess', name: '방 정리 안 하기', icon: '🧸', desc: '방이 어질러져 있어요.', weight: 2 },
+      { id: 'lie', name: '거짓말하기', icon: '🤥', desc: '사실과 다른 말을 했어요.', weight: 4 },
+      { id: 'fight', name: '동생과 싸우기', icon: '⚡', desc: '동생과 다투었어요.', weight: 3 },
+      { id: 'help', name: '동생 도와주기', icon: '🤝', desc: '동생을 도와주었어요.', weight: -2 },
+      { id: 'sorry', name: '먼저 사과하기', icon: '💛', desc: '잘못한 뒤 먼저 사과했어요.', weight: -3 },
+      { id: 'prepare', name: '준비물 챙기기', icon: '🎒', desc: '학교 준비물을 미리 챙겼어요.', weight: -1 }
+    ];
+
+    const threshold = 4;
+    const predictionCases = [
+      { id: 1, title: '사례 A', selected: ['sleep', 'mess', 'prepare'] },
+      { id: 2, title: '사례 B', selected: ['homework', 'lie'] },
+      { id: 3, title: '사례 C', selected: ['fight', 'sorry', 'help'] }
+    ];
+
+    let currentInput = {};
+    let trials = [];
+
+    function initInputs() {
+      nodes.forEach(node => { currentInput[node.id] = 0; });
+    }
+
+    function renderInputs() {
+      const container = document.getElementById('input-list');
+      container.innerHTML = nodes.map(node => `
+        <div class="node-card">
+          <div class="node-header">
+            <div class="node-title">${node.name}</div>
+            <div class="node-icon">${node.icon}</div>
+          </div>
+          <div class="node-desc">${node.desc}</div>
+          <div class="toggle-row">
+            <button class="toggle-btn ${currentInput[node.id] === 1 ? 'selected-on' : ''}" onclick="setInput('${node.id}', 1)">있음</button>
+            <button class="toggle-btn ${currentInput[node.id] === 0 ? 'selected-off' : ''}" onclick="setInput('${node.id}', 0)">없음</button>
+          </div>
+        </div>
+      `).join('');
+      renderSelection();
+    }
+
+    function setInput(id, value) {
+      currentInput[id] = value;
+      renderInputs();
+    }
+
+    function renderSelection() {
+      const selected = nodes.filter(node => currentInput[node.id] === 1);
+      const box = document.getElementById('current-selection');
+      if (!selected.length) {
+        box.innerHTML = '아직 선택한 행동이 없습니다.';
+        return;
+      }
+      box.innerHTML = selected.map(node => `<span class="mini-tag">${node.name}</span>`).join(' ');
+    }
+
+    function calculateResult(inputMap) {
+      let sum = 0;
+      nodes.forEach(node => {
+        sum += inputMap[node.id] * node.weight;
+      });
+      return {
+        sum,
+        label: sum >= threshold ? '화남' : '괜찮음'
+      };
+    }
+
+    function getSelectedNames(inputMap) {
+      return nodes.filter(node => inputMap[node.id] === 1).map(node => node.name);
+    }
+
+    function runTrial() {
+      const selectedNames = getSelectedNames(currentInput);
+      if (!selectedNames.length) {
+        alert('적어도 하나의 행동을 선택해 주세요.');
+        return;
+      }
+
+      const inputCopy = JSON.parse(JSON.stringify(currentInput));
+      const result = calculateResult(inputCopy);
+      trials.unshift({ input: inputCopy, result: result.label, sum: result.sum });
+
+      const box = document.getElementById('instant-result');
+      box.classList.remove('hidden', 'alarm', 'calm');
+      box.classList.add(result.label === '화남' ? 'alarm' : 'calm');
+      box.innerHTML = `
+        <strong>실험 결과: ${result.label}</strong><br>
+        선택한 행동: ${selectedNames.join(', ')}<br>
+        지금은 점수가 숨겨져 있습니다. 어떤 행동은 결과를 강하게 만들고, 어떤 행동은 누그러뜨릴 수 있는지 추리해 보세요.
+      `;
+
+      renderTrials();
+      showStep(2);
+    }
+
+    function renderTrials() {
+      const container = document.getElementById('trial-list');
+      container.innerHTML = trials.map((trial, index) => {
+        const names = getSelectedNames(trial.input);
+        return `
+          <div class="trial-item">
+            <strong>실험 ${trials.length - index}</strong><br>
+            선택한 행동: ${names.join(', ')}<br>
+            결과: <strong>${trial.result}</strong>
+          </div>
+        `;
+      }).join('');
+
+      updateHint();
+      document.getElementById('reveal-btn').disabled = trials.length < 3;
+    }
+
+    function updateHint() {
+      const hintBox = document.getElementById('hint-box');
+      if (trials.length < 3) {
+        hintBox.innerHTML = '서로 다른 조합으로 3번 이상 실험해 보세요. 어떤 행동이 더 큰 영향을 주는지 비교해 볼 수 있습니다.';
+        return;
+      }
+
+      const angryTrials = trials.filter(t => t.result === '화남').length;
+      const calmTrials = trials.filter(t => t.result === '괜찮음').length;
+      let text = `<strong>생각해 보기</strong><br>지금까지 화남 ${angryTrials}번, 괜찮음 ${calmTrials}번이 나왔습니다.<br>`;
+      text += '한 행동만 있어도 화남이 되는 경우가 있었나요? 반대로 어떤 행동은 결과를 누그러뜨린 것 같나요?';
+      hintBox.innerHTML = text;
+    }
+
+    function renderWeights() {
+      const container = document.getElementById('weights-grid');
+      container.innerHTML = nodes.map(node => `
+        <div class="weight-card">
+          <strong>${node.name}</strong><br>
+          가중치: <strong>${node.weight}</strong><br>
+          <span class="footer-note">${node.weight >= 0 ? '화남 점수를 올리는 신호' : '화남 점수를 낮추는 신호'}</span>
+        </div>
+      `).join('') + `
+        <div class="weight-card">
+          <strong>기준값(역치)</strong><br>
+          역치: <strong>${threshold}</strong>
+        </div>
+      `;
+
+      const lastTrial = trials[0];
+      const formulaBox = document.getElementById('formula-box');
+      if (!lastTrial) {
+        formulaBox.innerHTML = '아직 실험한 기록이 없습니다.';
+        return;
+      }
+
+      const parts = nodes.map(node => `${lastTrial.input[node.id]} × ${node.weight}`);
+      formulaBox.innerHTML = `
+        <div class="formula">
+          최근 실험 계산식<br>
+          ${parts.join(' + ')} = ${lastTrial.sum}<br>
+          ${lastTrial.sum} ${lastTrial.sum >= threshold ? '≥' : '<'} ${threshold} → <strong>${lastTrial.result}</strong>
+        </div>
+      `;
+    }
+
+    function renderPredictionCases() {
+      const container = document.getElementById('prediction-list');
+      container.innerHTML = predictionCases.map(item => {
+        const names = item.selected.map(id => nodes.find(n => n.id === id).name);
+        const inputMap = {};
+        nodes.forEach(node => inputMap[node.id] = item.selected.includes(node.id) ? 1 : 0);
+        const answer = calculateResult(inputMap);
+        return `
+          <div class="case-card">
+            <div class="case-title">${item.title}</div>
+            <div>${names.map(name => `<span class="mini-tag">${name}</span>`).join(' ')}</div>
+            <div class="actions">
+              <button onclick="showPredictionAnswer(${item.id}, '화남')">화남 예측</button>
+              <button class="secondary" onclick="showPredictionAnswer(${item.id}, '괜찮음')">괜찮음 예측</button>
+            </div>
+            <div class="result-box hidden" id="prediction-answer-${item.id}"></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function showPredictionAnswer(caseId, userAnswer) {
+      const item = predictionCases.find(c => c.id === caseId);
+      const inputMap = {};
+      nodes.forEach(node => inputMap[node.id] = item.selected.includes(node.id) ? 1 : 0);
+      const answer = calculateResult(inputMap);
+      const box = document.getElementById(`prediction-answer-${caseId}`);
+      box.classList.remove('hidden', 'alarm', 'calm');
+      box.classList.add(answer.label === '화남' ? 'alarm' : 'calm');
+
+      const parts = nodes
+        .filter(node => inputMap[node.id] === 1)
+        .map(node => `${node.name}(${node.weight})`)
+        .join(' + ');
+
+      box.innerHTML = `
+        <strong>${userAnswer === answer.label ? '정답입니다!' : '다시 계산해 볼까요?'}</strong><br>
+        여러분의 예측: ${userAnswer}<br>
+        실제 결과: ${answer.label}<br>
+        계산: ${parts} = ${answer.sum}<br>
+        ${answer.sum} ${answer.sum >= threshold ? '≥' : '<'} ${threshold} 이므로 <strong>${answer.label}</strong>입니다.
+      `;
+    }
+
+    function showStep(step) {
+      ['step-1', 'step-2', 'step-3', 'step-4'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['badge-1', 'badge-2', 'badge-3', 'badge-4'].forEach(id => document.getElementById(id).classList.remove('active'));
+      document.getElementById(`step-${step}`).classList.remove('hidden');
+      document.getElementById(`badge-${step}`).classList.add('active');
+    }
+
+    function resetAll() {
+      trials = [];
+      initInputs();
+      renderInputs();
+      document.getElementById('instant-result').classList.add('hidden');
+      document.getElementById('trial-list').innerHTML = '';
+      document.getElementById('hint-box').innerHTML = '아직 충분한 실험이 없습니다. 서로 다른 조합으로 여러 번 실험해 보세요.';
+      document.getElementById('reveal-btn').disabled = true;
+      showStep(1);
+    }
+
+    document.getElementById('run-btn').addEventListener('click', runTrial);
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      initInputs();
+      renderInputs();
+      document.getElementById('instant-result').classList.add('hidden');
+    });
+    document.getElementById('back-to-step1').addEventListener('click', () => showStep(1));
+    document.getElementById('reveal-btn').addEventListener('click', () => {
+      renderWeights();
+      showStep(3);
+    });
+    document.getElementById('back-to-step2').addEventListener('click', () => showStep(2));
+    document.getElementById('go-predict-btn').addEventListener('click', () => {
+      renderPredictionCases();
+      showStep(4);
+    });
+    document.getElementById('back-to-step3').addEventListener('click', () => showStep(3));
+    document.getElementById('reset-btn').addEventListener('click', resetAll);
+
+    initInputs();
+    renderInputs();
+  </script>
+</body>
+</html>
