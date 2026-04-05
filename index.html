@@ -3,41 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>퍼셉트론 실습 - 감정 예측기</title>
+  <title>엄마 기분 예측기 - 퍼셉트론 실습</title>
   <style>
     * { box-sizing: border-box; font-family: "Pretendard", "Noto Sans KR", Arial, sans-serif; }
     body { margin: 0; background: #f6f8fc; color: #22304a; }
-    .container { max-width: 1160px; margin: 0 auto; padding: 24px; }
-    .panel { background: #fff; border-radius: 22px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 28px rgba(25, 40, 70, 0.08); }
+    .container { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .panel { background: #fff; border-radius: 22px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 28px rgba(25,40,70,0.08); }
     h1, h2, h3, p { margin-top: 0; }
     .subtitle { color: #5a667d; line-height: 1.75; }
     .step-indicator { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     .step-badge { padding: 8px 12px; border-radius: 999px; background: #eaf0ff; font-size: 14px; }
-    .step-badge.active { background: #4d7eff; color: #fff; font-weight: 700; }
-    .grid-2 { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; }
+    .step-badge.active { background: #4d7eff; color: white; font-weight: 700; }
+    .grid-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
     .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
-    .node-card, .case-card, .weight-card { border: 1px solid #dce4f7; border-radius: 18px; padding: 16px; background: #fbfcff; }
+    .info-card, .case-card, .result-box, .side-box { border: 1px solid #dce4f7; border-radius: 18px; padding: 16px; background: #fbfcff; }
     .node-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     .node-title { font-size: 18px; font-weight: 700; }
     .node-icon { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #eef3ff; font-size: 22px; }
-    .node-desc { margin: 10px 0 12px; font-size: 14px; color: #5d6880; min-height: 38px; }
-    .weight-input { width: 100%; border: 1px solid #cfd9f3; border-radius: 12px; padding: 10px 12px; font-size: 15px; }
-    .hint { font-size: 13px; color: #6a7590; margin-top: 8px; }
-    .side-box, .result-box { border-radius: 18px; padding: 18px; background: #f2f6ff; line-height: 1.8; }
-    .result-box.alert { background: #ffe8e8; color: #972432; }
-    .result-box.safe { background: #e7f7eb; color: #1f6b3a; }
+    .small { font-size: 14px; color: #5e6a84; line-height: 1.7; }
+    .number-input { width: 100%; border: 1px solid #cfd9f3; border-radius: 12px; padding: 10px 12px; font-size: 15px; margin-top: 10px; }
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-    button { border: none; border-radius: 14px; padding: 12px 16px; background: #4d7eff; color: #fff; font-weight: 700; cursor: pointer; font-size: 15px; }
+    button { border: none; border-radius: 14px; padding: 12px 16px; background: #4d7eff; color: white; font-weight: 700; cursor: pointer; font-size: 15px; }
     button.secondary { background: #eaf0ff; color: #263657; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .hidden { display: none; }
     .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .tag { padding: 6px 10px; border-radius: 999px; background: #eef3ff; font-size: 13px; }
-    .trial-list { display: grid; gap: 10px; margin-top: 14px; }
-    .trial-item { border: 1px solid #dce4f7; border-radius: 14px; background: #fff; padding: 12px; font-size: 14px; line-height: 1.7; }
-    .formula { font-size: 16px; font-weight: 700; line-height: 1.9; }
-    .prediction-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-    .small { font-size: 14px; color: #5e6a84; }
+    .math { font-weight: 700; line-height: 1.9; }
+    .alert { background: #ffe8e8; color: #972432; }
+    .safe { background: #e7f7eb; color: #1f6b3a; }
+    .hidden { display: none; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #dce4f7; padding: 10px; text-align: center; font-size: 14px; }
+    th { background: #eef3ff; }
+    .prediction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
     @media (max-width: 860px) {
       .grid-2 { grid-template-columns: 1fr; }
       .container { padding: 14px; }
@@ -48,91 +47,88 @@
 <body>
   <div class="container">
     <section class="panel">
-      <h1>퍼셉트론 실습: 엄마 기분 예측기</h1>
+      <h1>엄마 기분 예측기 만들기</h1>
       <p class="subtitle">
-        학생이 입력의 중요도인 가중치를 직접 정하고, 여러 사례의 결과를 보며 역치(기준값)를 추론하는 퍼셉트론 실습입니다.
-        어떤 행동은 점수를 올리고, 어떤 행동은 점수를 낮추게 설계할 수 있습니다.
+        엄마를 화나게 하지 않기 위해, 여러 행동을 입력으로 받아 결과를 예측하는 퍼셉트론 실습입니다.
+        각 행동은 <strong>했으면 1, 안 했으면 0</strong>으로 입력되고, 학생은 각 행동의 <strong>중요도(가중치)</strong>를 -5부터 5 사이에서 직접 정합니다.
       </p>
       <div class="step-indicator">
-        <span class="step-badge active" id="badge-1">1단계 가중치 정하기</span>
-        <span class="step-badge" id="badge-2">2단계 사례 결과 보기</span>
-        <span class="step-badge" id="badge-3">3단계 역치 추론하기</span>
+        <span class="step-badge active" id="badge-1">1단계 중요도 정하기</span>
+        <span class="step-badge" id="badge-2">2단계 사례 살펴보기</span>
+        <span class="step-badge" id="badge-3">3단계 중요도 조정하기</span>
         <span class="step-badge" id="badge-4">4단계 새 사례 예측하기</span>
       </div>
     </section>
 
     <section class="panel" id="step-1">
-      <h2>1단계. 입력의 중요도(가중치) 정하기</h2>
+      <h2>1단계. 행동카드의 중요도(가중치) 정하기</h2>
       <p class="subtitle">
-        각 행동이 엄마의 기분에 얼마나 영향을 줄지 직접 점수를 정해 보세요.
-        좋지 않은 행동은 보통 양수, 좋은 행동은 음수로 입력하면 됩니다.
+        각 행동이 엄마 기분에 얼마나 큰 영향을 주는지 점수를 정해 보세요. 좋지 않은 행동은 양수, 좋은 행동은 음수로 주면 됩니다.
       </p>
       <div class="grid-2">
-        <div class="card-grid" id="weight-input-list"></div>
+        <div class="card-grid" id="weight-list"></div>
         <div class="side-box">
           <h3>입력 규칙</h3>
-          <p class="small">나쁜 행동은 0~5, 좋은 행동은 -5~0 범위에서 정하면 이해하기 쉽습니다.</p>
-          <ul class="small">
-            <li>숫자가 클수록 영향이 큽니다.</li>
-            <li>음수는 화남 점수를 낮추는 신호입니다.</li>
-            <li>가중치는 여러분이 만든 AI의 판단 기준입니다.</li>
-          </ul>
+          <div class="small">
+            사례에서는 각 행동이 <strong>있으면 1</strong>, <strong>없으면 0</strong>으로 입력됩니다.<br>
+            퍼셉트론은 <strong>입력값 × 중요도</strong>를 모두 더해 결과를 판단합니다.
+          </div>
           <div class="actions">
-            <button id="save-weights-btn">가중치 저장하고 사례 보기</button>
-            <button class="secondary" id="reset-weights-btn">기본값으로 되돌리기</button>
+            <button id="save-weights-btn">사례 보기</button>
+            <button class="secondary" id="reset-default-btn">기본값으로 되돌리기</button>
           </div>
         </div>
       </div>
     </section>
 
     <section class="panel hidden" id="step-2">
-      <h2>2단계. 사례 결과를 보며 규칙 찾기</h2>
+      <h2>2단계. 엄마가 화났는지 화나지 않았는지 살펴보기</h2>
       <p class="subtitle">
-        여러분이 정한 가중치로 여러 사례의 총합과 결과가 만들어졌습니다.
-        이 결과를 보고 몇 점부터 화남이라고 볼 수 있을지 생각해 보세요.
+        아래 사례에서 각 행동은 0 또는 1로 입력됩니다. 여러분이 정한 중요도로 계산했을 때 실제 결과와 어떻게 연결되는지 살펴보세요.
       </p>
-      <div class="card-grid" id="case-list"></div>
-      <div class="result-box" id="case-hint-box">
-        사례의 합을 비교하며 결과가 바뀌는 지점을 찾아보세요.
+      <div class="table-wrap">
+        <table id="case-table"></table>
       </div>
+      <div class="result-box" id="step2-feedback" style="margin-top:16px;"></div>
       <div class="actions">
         <button class="secondary" id="back-step-1">이전 단계</button>
-        <button id="go-step-3">역치 추론하기</button>
+        <button id="go-step-3">중요도 조정하기</button>
       </div>
     </section>
 
     <section class="panel hidden" id="step-3">
-      <h2>3단계. 역치(기준값) 추론하기</h2>
+      <h2>3단계. 가장 잘 맞추는 중요도 찾기</h2>
       <p class="subtitle">
-        사례들을 보고 여러분이 생각한 기준값을 입력해 보세요. 입력한 역치로 사례 결과가 잘 설명되는지 확인합니다.
+        사례 결과를 더 잘 설명하도록 중요도를 다시 바꿔 보세요. 조정할수록 예측기의 성능이 달라집니다.
       </p>
       <div class="grid-2">
+        <div>
+          <div class="card-grid" id="adjust-weight-list"></div>
+        </div>
         <div class="side-box">
-          <h3>역치 입력</h3>
-          <p class="small">예: 총합이 4 이상이면 화남, 4 미만이면 괜찮음</p>
-          <input type="number" id="threshold-input" class="weight-input" placeholder="추론한 역치 입력" />
+          <h3>현재 성능 점검</h3>
+          <div class="small">고정된 기준점: <strong id="threshold-text"></strong></div>
+          <div class="result-box" id="accuracy-box" style="margin-top:12px;"></div>
           <div class="actions">
-            <button id="check-threshold-btn">내 역치 확인하기</button>
+            <button id="recheck-btn">다시 계산하기</button>
+            <button id="go-step-4">새 사례 예측하기</button>
           </div>
-          <div class="result-box hidden" id="threshold-result-box"></div>
         </div>
-        <div class="side-box">
-          <h3>최근 사례 요약</h3>
-          <div id="threshold-summary" class="small"></div>
-        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="adjust-table"></table>
       </div>
       <div class="actions">
         <button class="secondary" id="back-step-2">이전 단계</button>
-        <button id="go-step-4">새 사례 예측하기</button>
       </div>
     </section>
 
     <section class="panel hidden" id="step-4">
-      <h2>4단계. 새 사례 예측하기</h2>
+      <h2>4단계. 새로운 사례 넣어서 예측하고 성능 점검하기</h2>
       <p class="subtitle">
-        이제 여러분이 정한 가중치와 추론한 역치를 사용해 새로운 사례를 예측해 보세요.
+        새로운 행동 조합을 보고 여러분의 예측기가 화남/안 화남을 얼마나 잘 예측하는지 확인해 보세요.
       </p>
-      <div class="prediction-list" id="prediction-list"></div>
+      <div class="prediction-grid" id="prediction-list"></div>
       <div class="actions">
         <button class="secondary" id="back-step-3">이전 단계</button>
         <button id="reset-all-btn">처음부터 다시하기</button>
@@ -141,235 +137,214 @@
   </div>
 
   <script>
-    const inputs = [
-      { id: 'homework', name: '숙제 안 하기', icon: '📚', desc: '해야 할 숙제를 하지 않았어요.', type: 'negative', defaultWeight: 2 },
-      { id: 'sleep', name: '늦잠 자기', icon: '⏰', desc: '아침에 늦게 일어났어요.', type: 'negative', defaultWeight: 1 },
-      { id: 'mess', name: '방 정리 안 하기', icon: '🧸', desc: '방이 어질러져 있어요.', type: 'negative', defaultWeight: 2 },
-      { id: 'lie', name: '거짓말하기', icon: '🤥', desc: '사실과 다른 말을 했어요.', type: 'negative', defaultWeight: 4 },
-      { id: 'help', name: '동생 도와주기', icon: '🤝', desc: '동생을 도와주었어요.', type: 'positive', defaultWeight: -2 },
-      { id: 'sorry', name: '먼저 사과하기', icon: '💛', desc: '잘못한 뒤 먼저 사과했어요.', type: 'positive', defaultWeight: -3 }
+    const behaviors = [
+      { id: 'homework', name: '숙제 안 하기', icon: '📚', desc: '해야 할 숙제를 하지 않음', defaultWeight: 2 },
+      { id: 'sleep', name: '늦잠 자기', icon: '⏰', desc: '아침에 늦게 일어남', defaultWeight: 1 },
+      { id: 'lie', name: '거짓말하기', icon: '🤥', desc: '사실과 다른 말을 함', defaultWeight: 4 },
+      { id: 'mess', name: '방 정리 안 하기', icon: '🧸', desc: '방이 어질러져 있음', defaultWeight: 2 },
+      { id: 'help', name: '동생 도와주기', icon: '🤝', desc: '동생을 도와줌', defaultWeight: -2 },
+      { id: 'sorry', name: '먼저 사과하기', icon: '💛', desc: '먼저 사과함', defaultWeight: -3 }
     ];
 
-    const sampleCases = [
-      { id: 1, title: '사례 1', active: ['sleep'] },
-      { id: 2, title: '사례 2', active: ['homework', 'mess'] },
-      { id: 3, title: '사례 3', active: ['lie'] },
-      { id: 4, title: '사례 4', active: ['homework', 'sorry'] },
-      { id: 5, title: '사례 5', active: ['mess', 'sleep', 'help'] }
+    const threshold = 4;
+
+    const trainingCases = [
+      { id: 1, inputs: { homework:1, sleep:1, lie:0, mess:0, help:0, sorry:0 }, actual: '안 화남' },
+      { id: 2, inputs: { homework:1, sleep:0, lie:1, mess:0, help:0, sorry:0 }, actual: '화남' },
+      { id: 3, inputs: { homework:0, sleep:0, lie:0, mess:1, help:1, sorry:0 }, actual: '안 화남' },
+      { id: 4, inputs: { homework:0, sleep:0, lie:1, mess:1, help:0, sorry:0 }, actual: '화남' },
+      { id: 5, inputs: { homework:1, sleep:0, lie:0, mess:1, help:0, sorry:1 }, actual: '안 화남' }
     ];
 
-    const predictionCases = [
-      { id: 101, title: '새 사례 A', active: ['homework', 'sleep'] },
-      { id: 102, title: '새 사례 B', active: ['lie', 'help'] },
-      { id: 103, title: '새 사례 C', active: ['mess', 'sleep', 'sorry'] }
+    const testCases = [
+      { id: 101, title: '새 사례 A', inputs: { homework:1, sleep:0, lie:0, mess:1, help:0, sorry:0 }, actual: '화남' },
+      { id: 102, title: '새 사례 B', inputs: { homework:0, sleep:1, lie:0, mess:0, help:1, sorry:1 }, actual: '안 화남' },
+      { id: 103, title: '새 사례 C', inputs: { homework:0, sleep:0, lie:1, mess:0, help:1, sorry:0 }, actual: '안 화남' }
     ];
 
     let weights = {};
-    let inferredThreshold = null;
-    let realThreshold = null;
 
     function initWeights() {
-      inputs.forEach(item => {
-        weights[item.id] = item.defaultWeight;
-      });
-      inferredThreshold = null;
+      behaviors.forEach(b => { weights[b.id] = b.defaultWeight; });
     }
 
-    function calculateSum(activeList) {
-      return activeList.reduce((acc, id) => acc + Number(weights[id] || 0), 0);
+    function showStep(n) {
+      ['step-1','step-2','step-3','step-4'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['badge-1','badge-2','badge-3','badge-4'].forEach(id => document.getElementById(id).classList.remove('active'));
+      document.getElementById(`step-${n}`).classList.remove('hidden');
+      document.getElementById(`badge-${n}`).classList.add('active');
     }
 
-    function determineRealThreshold() {
-      const sums = sampleCases.map(c => calculateSum(c.active)).sort((a, b) => a - b);
-      const unique = [...new Set(sums)];
-      realThreshold = unique[Math.floor(unique.length / 2)] || 1;
-      if (realThreshold < 1) realThreshold = 1;
-    }
-
-    function labelByRealThreshold(sum) {
-      return sum >= realThreshold ? '화남' : '괜찮음';
-    }
-
-    function labelByUserThreshold(sum) {
-      return sum >= inferredThreshold ? '화남' : '괜찮음';
-    }
-
-    function renderWeightInputs() {
-      const container = document.getElementById('weight-input-list');
-      container.innerHTML = inputs.map(item => `
-        <div class="node-card">
+    function renderWeightCards(targetId, prefix='w') {
+      const container = document.getElementById(targetId);
+      container.innerHTML = behaviors.map(b => `
+        <div class="info-card">
           <div class="node-header">
-            <div class="node-title">${item.name}</div>
-            <div class="node-icon">${item.icon}</div>
+            <div class="node-title">${b.name}</div>
+            <div class="node-icon">${b.icon}</div>
           </div>
-          <div class="node-desc">${item.desc}</div>
-          <input type="number" class="weight-input" id="weight-${item.id}" value="${weights[item.id]}" />
-          <div class="hint">${item.type === 'negative' ? '좋지 않은 행동: 보통 0~5' : '좋은 행동: 보통 -5~0'}</div>
+          <div class="small">${b.desc}</div>
+          <input type="number" min="-5" max="5" class="number-input" id="${prefix}-${b.id}" value="${weights[b.id]}" />
+          <div class="small">-5 ~ 5 범위의 중요도 입력</div>
         </div>
       `).join('');
     }
 
-    function saveWeightsFromInputs() {
-      for (const item of inputs) {
-        const value = Number(document.getElementById(`weight-${item.id}`).value);
-        if (Number.isNaN(value)) {
-          alert('모든 가중치를 숫자로 입력해 주세요.');
+    function saveWeights(prefix='w') {
+      for (const b of behaviors) {
+        const val = Number(document.getElementById(`${prefix}-${b.id}`).value);
+        if (Number.isNaN(val) || val < -5 || val > 5) {
+          alert('모든 중요도를 -5부터 5 사이 숫자로 입력해 주세요.');
           return false;
         }
-        weights[item.id] = value;
+        weights[b.id] = val;
       }
-      determineRealThreshold();
-      renderSampleCases();
-      updateThresholdSummary();
       return true;
     }
 
-    function getTags(activeList) {
-      return activeList.map(id => {
-        const item = inputs.find(input => input.id === id);
-        return `<span class="tag">${item.name}</span>`;
-      }).join('');
+    function calcSum(inputObj) {
+      let sum = 0;
+      behaviors.forEach(b => {
+        sum += inputObj[b.id] * weights[b.id];
+      });
+      return sum;
     }
 
-    function renderSampleCases() {
-      const container = document.getElementById('case-list');
-      container.innerHTML = sampleCases.map(item => {
-        const sum = calculateSum(item.active);
-        const result = labelByRealThreshold(sum);
+    function predictLabel(sum) {
+      return sum >= threshold ? '화남' : '안 화남';
+    }
+
+    function renderCaseTable(targetId, cases, includeActual=true) {
+      const table = document.getElementById(targetId);
+      let header = '<tr><th>사례</th>';
+      behaviors.forEach(b => { header += `<th>${b.name}</th>`; });
+      header += '<th>총합</th><th>예측</th>';
+      if (includeActual) header += '<th>실제 결과</th><th>일치 여부</th>';
+      header += '</tr>';
+
+      let rows = cases.map(c => {
+        const sum = calcSum(c.inputs);
+        const pred = predictLabel(sum);
+        let row = `<tr><td>${c.title || '사례 ' + c.id}</td>`;
+        behaviors.forEach(b => { row += `<td>${c.inputs[b.id]}</td>`; });
+        row += `<td>${sum}</td><td>${pred}</td>`;
+        if (includeActual) {
+          const match = pred === c.actual ? '맞음' : '틀림';
+          row += `<td>${c.actual}</td><td>${match}</td>`;
+        }
+        row += '</tr>';
+        return row;
+      }).join('');
+
+      table.innerHTML = header + rows;
+    }
+
+    function updateStep2Feedback() {
+      let correct = 0;
+      trainingCases.forEach(c => {
+        const pred = predictLabel(calcSum(c.inputs));
+        if (pred === c.actual) correct += 1;
+      });
+      document.getElementById('step2-feedback').innerHTML = `
+        <div class="math">고정된 기준점은 ${threshold}점입니다.</div>
+        현재 중요도로 훈련 사례를 ${trainingCases.length}개 중 <strong>${correct}개</strong> 맞혔습니다.<br>
+        틀린 사례가 있다면 어떤 행동의 중요도를 조정해야 할지 생각해 보세요.
+      `;
+    }
+
+    function updateAccuracyBox() {
+      let correct = 0;
+      const detail = trainingCases.map(c => {
+        const sum = calcSum(c.inputs);
+        const pred = predictLabel(sum);
+        if (pred === c.actual) correct += 1;
+        return `${c.id}번 사례: ${sum}점 → 예측 ${pred} / 실제 ${c.actual}`;
+      }).join('<br>');
+
+      const box = document.getElementById('accuracy-box');
+      box.className = 'result-box ' + (correct === trainingCases.length ? 'safe' : 'alert');
+      box.innerHTML = `
+        <strong>현재 성능: ${correct}/${trainingCases.length}</strong><br><br>
+        ${detail}
+      `;
+    }
+
+    function renderPredictions() {
+      const container = document.getElementById('prediction-list');
+      container.innerHTML = testCases.map(c => {
+        const tags = behaviors.map(b => `<span class="tag">${b.name}: ${c.inputs[b.id]}</span>`).join('');
         return `
           <div class="case-card">
-            <h3>${item.title}</h3>
-            <div class="tag-row">${getTags(item.active)}</div>
-            <div class="small" style="margin-top:10px;">총합: <strong>${sum}</strong></div>
-            <div class="result-box ${result === '화남' ? 'alert' : 'safe'}" style="margin-top:12px;">
-              결과: <strong>${result}</strong>
+            <h3>${c.title}</h3>
+            <div class="tag-row">${tags}</div>
+            <div class="actions">
+              <button onclick="checkPrediction(${c.id}, '화남')">화남 선택</button>
+              <button class="secondary" onclick="checkPrediction(${c.id}, '안 화남')">안 화남 선택</button>
             </div>
+            <div class="result-box hidden" id="pred-${c.id}" style="margin-top:12px;"></div>
           </div>
         `;
       }).join('');
-
-      const sums = sampleCases.map(item => `${item.title}=${calculateSum(item.active)}`).join(', ');
-      document.getElementById('case-hint-box').innerHTML = `
-        <strong>생각해 보기</strong><br>
-        사례별 총합은 ${sums} 입니다.<br>
-        화남과 괜찮음이 갈리는 점수 구간이 어디쯤인지 찾아보세요.
-      `;
     }
 
-    function updateThresholdSummary() {
-      const box = document.getElementById('threshold-summary');
-      box.innerHTML = sampleCases.map(item => {
-        const sum = calculateSum(item.active);
-        const result = labelByRealThreshold(sum);
-        return `${item.title}: 총합 ${sum}, 결과 ${result}`;
-      }).join('<br>');
-    }
-
-    function checkUserThreshold() {
-      const value = Number(document.getElementById('threshold-input').value);
-      if (Number.isNaN(value)) {
-        alert('역치를 숫자로 입력해 주세요.');
-        return;
-      }
-      inferredThreshold = value;
-
-      let correctCount = 0;
-      const details = sampleCases.map(item => {
-        const sum = calculateSum(item.active);
-        const actual = labelByRealThreshold(sum);
-        const predicted = labelByUserThreshold(sum);
-        if (actual === predicted) correctCount += 1;
-        return `${item.title}: ${sum} → 실제 ${actual}, 내 기준 ${predicted}`;
-      }).join('<br>');
-
-      const box = document.getElementById('threshold-result-box');
-      box.classList.remove('hidden', 'alert', 'safe');
-      box.classList.add(correctCount === sampleCases.length ? 'safe' : 'alert');
+    function checkPrediction(id, answer) {
+      const c = testCases.find(x => x.id === id);
+      const sum = calcSum(c.inputs);
+      const pred = predictLabel(sum);
+      const box = document.getElementById(`pred-${id}`);
+      box.classList.remove('hidden');
+      box.className = 'result-box ' + (pred === c.actual ? 'safe' : 'alert');
       box.innerHTML = `
-        <strong>${correctCount === sampleCases.length ? '잘 맞는 역치입니다!' : '역치를 다시 조정해 보세요.'}</strong><br>
-        입력한 역치: <strong>${inferredThreshold}</strong><br>
-        사례 일치 수: <strong>${correctCount}/${sampleCases.length}</strong><br><br>
-        ${details}<br><br>
-        <span class="small">참고: 실제 시스템 역치는 공개하지 않았습니다. 사례를 더 잘 설명하는 값으로 조정해 보세요.</span>
+        여러분의 선택: <strong>${answer}</strong><br>
+        예측기 계산 결과: <strong>${pred}</strong><br>
+        실제 결과: <strong>${c.actual}</strong><br>
+        총합: <strong>${sum}</strong> (기준점 ${threshold})<br>
+        ${answer === pred ? '계산은 맞게 했어요.' : '선택과 계산 결과가 다릅니다. 총합을 다시 확인해 보세요.'}
       `;
-    }
-
-    function renderPredictionCases() {
-      const container = document.getElementById('prediction-list');
-      container.innerHTML = predictionCases.map(item => `
-        <div class="case-card">
-          <h3>${item.title}</h3>
-          <div class="tag-row">${getTags(item.active)}</div>
-          <div class="actions">
-            <button onclick="predictCase(${item.id}, '화남')">화남 예측</button>
-            <button class="secondary" onclick="predictCase(${item.id}, '괜찮음')">괜찮음 예측</button>
-          </div>
-          <div class="result-box hidden" id="prediction-box-${item.id}" style="margin-top:12px;"></div>
-        </div>
-      `).join('');
-    }
-
-    function predictCase(caseId, answer) {
-      if (inferredThreshold === null) {
-        alert('먼저 역치를 입력해 주세요.');
-        return;
-      }
-      const item = predictionCases.find(c => c.id === caseId);
-      const sum = calculateSum(item.active);
-      const userLabel = labelByUserThreshold(sum);
-      const box = document.getElementById(`prediction-box-${caseId}`);
-      box.classList.remove('hidden', 'alert', 'safe');
-      box.classList.add(userLabel === '화남' ? 'alert' : 'safe');
-      box.innerHTML = `
-        <strong>${answer === userLabel ? '계산이 맞습니다!' : '다시 계산해 보세요.'}</strong><br>
-        여러분의 선택: ${answer}<br>
-        총합: <strong>${sum}</strong><br>
-        내가 정한 역치: <strong>${inferredThreshold}</strong><br>
-        따라서 예측 결과는 <strong>${userLabel}</strong>입니다.
-      `;
-    }
-
-    function showStep(stepNumber) {
-      ['step-1', 'step-2', 'step-3', 'step-4'].forEach(id => document.getElementById(id).classList.add('hidden'));
-      ['badge-1', 'badge-2', 'badge-3', 'badge-4'].forEach(id => document.getElementById(id).classList.remove('active'));
-      document.getElementById(`step-${stepNumber}`).classList.remove('hidden');
-      document.getElementById(`badge-${stepNumber}`).classList.add('active');
-    }
-
-    function resetAll() {
-      initWeights();
-      renderWeightInputs();
-      document.getElementById('threshold-input').value = '';
-      document.getElementById('threshold-result-box').classList.add('hidden');
-      showStep(1);
     }
 
     document.getElementById('save-weights-btn').addEventListener('click', () => {
-      if (saveWeightsFromInputs()) showStep(2);
+      if (!saveWeights('w')) return;
+      renderCaseTable('case-table', trainingCases, true);
+      updateStep2Feedback();
+      renderWeightCards('adjust-weight-list', 'a');
+      renderCaseTable('adjust-table', trainingCases, true);
+      updateAccuracyBox();
+      document.getElementById('threshold-text').textContent = threshold;
+      showStep(2);
     });
 
-    document.getElementById('reset-weights-btn').addEventListener('click', () => {
+    document.getElementById('reset-default-btn').addEventListener('click', () => {
       initWeights();
-      renderWeightInputs();
+      renderWeightCards('weight-list', 'w');
     });
 
     document.getElementById('back-step-1').addEventListener('click', () => showStep(1));
     document.getElementById('go-step-3').addEventListener('click', () => showStep(3));
     document.getElementById('back-step-2').addEventListener('click', () => showStep(2));
-    document.getElementById('check-threshold-btn').addEventListener('click', checkUserThreshold);
+
+    document.getElementById('recheck-btn').addEventListener('click', () => {
+      if (!saveWeights('a')) return;
+      renderCaseTable('adjust-table', trainingCases, true);
+      updateAccuracyBox();
+    });
+
     document.getElementById('go-step-4').addEventListener('click', () => {
-      if (inferredThreshold === null) {
-        alert('먼저 역치를 추론해 주세요.');
-        return;
-      }
-      renderPredictionCases();
+      if (!saveWeights('a')) return;
+      renderPredictions();
       showStep(4);
     });
+
     document.getElementById('back-step-3').addEventListener('click', () => showStep(3));
-    document.getElementById('reset-all-btn').addEventListener('click', resetAll);
+    document.getElementById('reset-all-btn').addEventListener('click', () => {
+      initWeights();
+      renderWeightCards('weight-list', 'w');
+      renderWeightCards('adjust-weight-list', 'a');
+      showStep(1);
+    });
 
     initWeights();
-    renderWeightInputs();
+    renderWeightCards('weight-list', 'w');
   </script>
 </body>
 </html>
